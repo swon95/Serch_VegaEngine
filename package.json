@@ -1,0 +1,16 @@
+{
+  "name": "Serch_VegaEngine",
+  "version": "1.0.0",
+  "description": "Test VegaEngine",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "cheerio": "1.0.0-rc.12"
+  }
+}
