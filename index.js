@@ -14,6 +14,9 @@ let DBList = {
     },
 };
 
+let queue = [];
+let visited = 0;
+
 const crawl = async (url) => {
     console.log("fetch URL: ", url);
 
@@ -41,7 +44,7 @@ const crawl = async (url) => {
         // 만약, href 가 http:// 또는 https:// 로 시작한다면 새로운 URL 로 인식하여
         // crawl 함수 호출
         if (href.startsWith("http://") || href.startsWith("https://")) {
-            crawl(href);
+            queue.push(href);
             return;
         }
 
@@ -53,8 +56,25 @@ const crawl = async (url) => {
         // const originURL = url.slice(0, url.lastIndexOf('/'))
         const originURL = new URL(url).origin;
         const newURL = originURL + href;
-        crawl(newURL);
+        queue.push(newURL);
+
+        if (queue[visited]) {
+            crawl(queue[visited]);
+            visited += 1;
+
+            if (visited % 100 === 0) {
+                storeDB();
+            }
+        } else {
+            console.log("크롤링 종료");
+            console.log(DBList);
+        }
     });
+};
+
+const storeDB = () => {
+    const json = JSON.stringify(DBList);
+    fs.writeFileSync("./db.json", json);
 };
 
 crawl(baseURL);
