@@ -1,6 +1,7 @@
 // parsing dependencies
 const cheerio = require("cheerio");
 const axios = require("axios");
+const fs = require("fs");
 
 // fetch-url
 const baseURL = "https://en.wikipedia.org";
@@ -20,10 +21,24 @@ let visited = 0;
 const crawl = async (url) => {
     console.log("fetch URL: ", url);
 
-    const htmlDocs = await axios.get(url);
+    try {
+        var htmlDocs = await axios.get(url);
+    } catch (error) {
+        await startNextQueue();
+        return;
+    }
+
+    // exception handling
+    if (!htmlDocs.data) {
+        console.log("HTML docs is not parsing");
+        await startNextQueue();
+        return;
+    }
+
     // $ == jQuery convention
     const $ = cheerio.load(htmlDocs.data);
     const links = $("a"); // a tag parsing
+    // refactor => h1 태그 뿐만 아니라 p 태그도 같이 요청 시 추가적인 데이터 파싱 가능
     const title = $("h1").text();
 
     if (DBList[url]) {
@@ -44,7 +59,9 @@ const crawl = async (url) => {
         // 만약, href 가 http:// 또는 https:// 로 시작한다면 새로운 URL 로 인식하여
         // crawl 함수 호출
         if (href.startsWith("http://") || href.startsWith("https://")) {
-            queue.push(href);
+            // 이미 방문했다면 실행 x
+            checkAlreadyVisited(href);
+
             return;
         }
 
@@ -56,22 +73,44 @@ const crawl = async (url) => {
         // const originURL = url.slice(0, url.lastIndexOf('/'))
         const originURL = new URL(url).origin;
         const newURL = originURL + href;
-        queue.push(newURL);
+        checkAlreadyVisited(newURL);
+    });
 
-        if (queue[visited]) {
-            crawl(queue[visited]);
-            visited += 1;
+    if (queue[visited]) {
+        await startNextQueue();
+    } else {
+        console.log("크롤링 종료");
+        console.log(DBList);
+    }
+};
 
-            if (visited % 100 === 0) {
-                storeDB();
-            }
-        } else {
-            console.log("크롤링 종료");
-            console.log(DBList);
-        }
+// 중복된 코드 제거 후 함수 생성 => 이미 방문한 사이트라면 큐에 push x
+const checkAlreadyVisited = (href) => {
+    if (!DBList[href]) {
+        queue.push(href);
+    }
+};
+
+// queue 에 있는 다음 사이트 방문
+const startNextQueue = async () => {
+    await timeOut();
+    crawl(queue[visited]);
+    visited += 1;
+    if (visited % 10 === 0) {
+        storeDB();
+    }
+};
+
+// create interval
+const timeOut = () => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve();
+        }, 500);
     });
 };
 
+// create parsing data file
 const storeDB = () => {
     const json = JSON.stringify(DBList);
     fs.writeFileSync("./db.json", json);
