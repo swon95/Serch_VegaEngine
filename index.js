@@ -20,6 +20,7 @@ let visited = 0;
 
 const crawl = async (url) => {
     console.log("fetch URL: ", url);
+    console.log("방문 대기중인 URL 개수: ", queue.length - visited);
 
     try {
         var htmlDocs = await axios.get(url);
